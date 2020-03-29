@@ -34,7 +34,7 @@ models = None
 keras_utils = None
 
 
-def identity_block(input_tensor, kernel_size, filters, stage, block):
+def identity_block(input_tensor, kernel_size, filters, stage, block, dtype):
     """The identity block is the block that has no conv layer at shortcut.
 
     # Arguments
@@ -58,21 +58,21 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
 
     x = layers.Conv2D(filters1, (1, 1),
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2a')(input_tensor)
-    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
+                      name=conv_name_base + '2a', dtype=dtype)(input_tensor)
+    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a', dtype=dtype)(x)
     x = layers.Activation('relu')(x)
 
     x = layers.Conv2D(filters2, kernel_size,
                       padding='same',
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2b')(x)
-    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+                      name=conv_name_base + '2b', dtype=dtype)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b', dtype=dtype)(x)
     x = layers.Activation('relu')(x)
 
     x = layers.Conv2D(filters3, (1, 1),
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2c')(x)
-    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+                      name=conv_name_base + '2c', dtype=dtype)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c', dtype=dtype)(x)
 
     x = layers.add([x, input_tensor])
     x = layers.Activation('relu')(x)
@@ -84,6 +84,7 @@ def conv_block(input_tensor,
                filters,
                stage,
                block,
+               dtype,
                strides=(2, 2)):
     """A block that has a conv layer at shortcut.
 
@@ -113,26 +114,30 @@ def conv_block(input_tensor,
 
     x = layers.Conv2D(filters1, (1, 1), strides=strides,
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2a')(input_tensor)
+                      name=conv_name_base + '2a',
+                      dtype=dtype)(input_tensor)
     x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2a')(x)
     x = layers.Activation('relu')(x)
 
     x = layers.Conv2D(filters2, kernel_size, padding='same',
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2b')(x)
-    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b')(x)
+                      name=conv_name_base + '2b',
+                      dtype=dtype)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2b', dtype=dtype)(x)
     x = layers.Activation('relu')(x)
 
     x = layers.Conv2D(filters3, (1, 1),
                       kernel_initializer='he_normal',
-                      name=conv_name_base + '2c')(x)
-    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
+                      name=conv_name_base + '2c',
+                      dtype=dtype)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=bn_name_base + '2c', dtype=dtype)(x)
 
     shortcut = layers.Conv2D(filters3, (1, 1), strides=strides,
                              kernel_initializer='he_normal',
-                             name=conv_name_base + '1')(input_tensor)
+                             name=conv_name_base + '1',
+                             dtype=dtype)(input_tensor)
     shortcut = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '1')(shortcut)
+        axis=bn_axis, name=bn_name_base + '1', dtype=dtype)(shortcut)
 
     x = layers.add([x, shortcut])
     x = layers.Activation('relu')(x)
@@ -145,6 +150,7 @@ def ResNet50(include_top=True,
              input_shape=None,
              pooling=None,
              classes=1000,
+             dtype='float32',
              **kwargs):
     """Instantiates the ResNet50 architecture.
 
@@ -227,31 +233,32 @@ def ResNet50(include_top=True,
                       strides=(2, 2),
                       padding='valid',
                       kernel_initializer='he_normal',
-                      name='conv1')(x)
-    x = layers.BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
+                      name='conv1',
+                      dtype=dtype)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name='bn_conv1', dtype=dtype)(x)
     x = layers.Activation('relu')(x)
     x = layers.ZeroPadding2D(padding=(1, 1), name='pool1_pad')(x)
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
-    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1), dtype=dtype)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b', dtype=dtype)
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c', dtype=dtype)
 
-    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
-    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a', dtype=dtype)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b', dtype=dtype)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c', dtype=dtype)
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d', dtype=dtype)
 
-    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
-    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a', dtype=dtype)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b', dtype=dtype)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c', dtype=dtype)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d', dtype=dtype)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e', dtype=dtype)
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f', dtype=dtype)
 
-    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
-    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a', dtype=dtype)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b', dtype=dtype)
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c', dtype=dtype)
 
     if include_top:
         x = layers.GlobalAveragePooling2D(name='avg_pool')(x)
